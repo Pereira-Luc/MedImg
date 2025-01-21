@@ -1,5 +1,6 @@
 import util.data_processing as dp
 import util.patiant_yaml_spliter as pys
+import train
 
 """
     Path to the BraTS 2021 dataset
@@ -20,7 +21,8 @@ import util.patiant_yaml_spliter as pys
                 - BraTS2021_XXXXX_seg.nii.gz
 
 """
-DATA_SET_PATH_PREFIX = '/work/projects/ai_imaging_class/dataset'
+DATA_SET_PATH = "/work/projects/ai_imaging_class/dataset"
+DATA_SET_PATH_PREFIX = "/work/projects/ai_imaging_class/dataset"
 
 
 def print_hi(name):
@@ -28,14 +30,11 @@ def print_hi(name):
 
 
 if __name__ == '__main__':
-    DATA_SET_PATH = "/work/projects/ai_imaging_class/dataset"
-
-    # Check if the train.yaml, val.yaml, and test.yaml files exist
-    # If they do not exist, run pys.create_yaml_file to create them
+    # Check if YAML splits exist
     if not pys.check_yaml_files():
         pys.create_yaml_file(DATA_SET_PATH, 70, 15, 15)
 
-
+    # Create DataLoaders
     train_loader = dp.get_monai_dataloader(
         yaml_path="train.yaml",
         prefix=DATA_SET_PATH_PREFIX,
@@ -44,4 +43,14 @@ if __name__ == '__main__':
         num_workers=4
     )
 
-    print(f"Number of batches in train_loader: {len(train_loader)}")
+    val_loader = dp.get_monai_dataloader(
+        yaml_path="val.yaml",
+        prefix=DATA_SET_PATH_PREFIX,
+        batch_size=2,
+        shuffle=False,
+        num_workers=4
+    )
+
+    # Step 2: Train the model
+    print("Starting training...")
+    train.main(train_loader, val_loader)
