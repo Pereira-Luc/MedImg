@@ -1,49 +1,52 @@
 import torch
-from monai.metrics import DiceMetric
-from monai.transforms import Compose, LoadImaged, EnsureChannelFirstd, Orientationd, Spacingd, ToTensord
-from dataloader import get_dataloader
+from tqdm import tqdm
 from monai.networks.nets import UNet
+from monai.metrics import DiceMetric
+from monai.transforms import AsDiscrete
 
 
-def test():
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    # Load the best model
+def main(test_loader):
+    # Define the U-Net model with same architecture as training
     model = UNet(
         spatial_dims=3,
         in_channels=1,
-        out_channels=4,
+        out_channels=1,
         channels=(16, 32, 64, 128, 256),
         strides=(2, 2, 2, 2),
         num_res_units=2,
-        norm="instance"
-    ).to(device)
-    model.load_state_dict(torch.load("best_model.pth", map_location=device))
+    ).to("cuda")
+
+    # Load the trained model weights
+    model.load_state_dict(torch.load("best_model.pth"))
     model.eval()
 
-    # Prepare the test dataloader
-    test_loader = get_dataloader("splits/test.yaml", "/work/projects/ai_imaging_class/dataset")
+    # Define metrics
+    dice_metric = DiceMetric(include_background=False, reduction="mean", get_not_nans=True)
+    post_trans = AsDiscrete(threshold=0.5)
 
-    # Initialize metric
-    dice_metric = DiceMetric(include_background=False, reduction="mean")
-
-    # Evaluation loop
+    # Test loop
+    test_dice_scores = []
     with torch.no_grad():
-        test_score = 0.0
-        for batch_idx, batch in enumerate(test_loader):
-            inputs, labels = batch["image"].to(device), batch["label"].to(device)
-
+        for batch_data in tqdm(test_loader, desc="Testing"):
+            inputs, labels = batch_data["image"].to("cuda"), batch_data["label"].to("cuda")
             outputs = model(inputs)
+            
+            # Apply post-processing
+            outputs = post_trans(outputs)
+            
+            # Calculate Dice score
+            dice_metric(y_pred=outputs, y=labels)
+            
+            # Optionally save predictions
+            # You can add code here to save the predicted segmentations
 
-            # Calculate Dice score for this batch
-            batch_scores = dice_metric(y_pred=outputs, y=labels)  # Get Dice scores per class
-            batch_score = batch_scores.mean().item()  # Compute mean Dice score
-            print(f"Batch {batch_idx + 1} Dice Score: {batch_score}")
-            test_score += batch_score
+        # Calculate mean Dice score
+        mean_dice = dice_metric.aggregate()[0].item()
+        dice_metric.reset()
+        
+        print(f"Test Dataset Dice Score: {mean_dice:.4f}")
 
-        # Average test score
-        test_score /= len(test_loader)
-        print(f"Overall Test Dice Score: {test_score}")
+    return mean_dice
 
-if __name__ == "__main__":
-    test()
+

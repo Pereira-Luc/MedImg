@@ -1,6 +1,8 @@
+import test
 import util.data_processing as dp
 import util.patiant_yaml_spliter as pys
 import train
+import test
 
 """
     Path to the BraTS 2021 dataset
@@ -50,6 +52,14 @@ if __name__ == '__main__':
         shuffle=False,
         num_workers=2
     )
+    
+    test_loader = dp.get_monai_dataloader(
+        yaml_path="test.yaml",
+        prefix=DATA_SET_PATH_PREFIX,
+        batch_size=4,
+        shuffle=False,
+        num_workers=2
+    )
 
     for batch in train_loader:
         print(batch["image"].shape)  # [batch_size, channels, depth, height, width]
@@ -59,3 +69,7 @@ if __name__ == '__main__':
     # Step 2: Train the model
     print("Starting training...")
     train.main(train_loader, val_loader)
+    
+    # Step 3: Test the model
+    print("Starting testing...")
+    test.main(test_loader)

@@ -256,7 +256,6 @@ def main():
 
     # ------------------------------------------------------------------------
     # 5. Plot a log-scaled histogram
-    #    "How could you roughly estimate the two thresholds by looking at it?"
     # ------------------------------------------------------------------------
     fig, ax = plot_log_histogram(denoised_img, bins=256,
                                  title="Log-scaled Histogram of Denoised Image")
