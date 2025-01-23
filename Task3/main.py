@@ -152,15 +152,10 @@ def create_border_between_gm_wm(mask_gm, mask_wm, selem_size=3):
 
     Return a boolean mask that indicates the border pixels.
     """
-    # Example: border as the boundary of the WM region
-    # We can erode WM and then take the XOR with the original WM
     selem = morphology.disk(selem_size)
     wm_eroded = morphology.erosion(mask_wm, selem)
     border = mask_wm ^ wm_eroded
 
-    # Alternatively, to find the exact boundary between GM and WM, we could do:
-    # border = morphology.dilation(mask_gm, selem) & mask_wm
-    # or many other approaches. Feel free to modify as needed.
 
     return border
 
@@ -268,9 +263,6 @@ def main():
     fig.savefig(os.path.join('out', 'brain_histogram.png'))
     plt.close(fig)
 
-    # (Answer to the question: by looking for the valleys in the histogram,
-    #  you can often guess where to split the intensities.)
-
     # ------------------------------------------------------------------------
     # 6. Combine the three masks into a single colour image
     #    background=Red, grey=Green, white=Blue
@@ -350,14 +342,6 @@ def main():
     save_image(up_mask_bg_nn, 'brain-bg_segmented_on_upsampled_nearest.png')
     save_image(up_mask_gm_nn, 'brain-gm_segmented_on_upsampled_nearest.png')
     save_image(up_mask_wm_nn, 'brain-wm_segmented_on_upsampled_nearest.png')
-
-    # (Answer to the question about differences):
-    # - When you upsample the original masks vs. thresholding again
-    #   after upsampling the grayscale, you typically get differences
-    #   because interpolation changes the intensities (especially bilinear),
-    #   potentially shifting thresholds. Nearest neighbor preserves the
-    #   exact 0/1 but changes shape boundaries.  Hence differences are more
-    #   pronounced with bilinear interpolation.
 
     print("Processing completed. Check the 'out' folder for results.")
 
