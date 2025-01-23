@@ -1,6 +1,6 @@
 from monai.transforms import (
     LoadImaged, EnsureChannelFirstd, Orientationd, Spacingd,
-    SpatialPadd, ScaleIntensityRanged, MapLabelValued, ToTensord, Compose
+    SpatialPadd, ScaleIntensityRanged, MapLabelValued, ToTensord, Compose, Resize
 )
 
 from monai.data import DataLoader, Dataset
@@ -22,20 +22,39 @@ def get_dataloader(yaml_path, data_dir, batch_size=2, shuffle=True, num_workers=
         for pid in patient_ids
     ]
 
-    
+
+            
+    # Define transforms, including resizing
     transforms = Compose([
         LoadImaged(keys=["image", "label"]),
         EnsureChannelFirstd(keys=["image", "label"]),
         Orientationd(keys=["image", "label"], axcodes="RAS"),
-        Spacingd(keys=["image", "label"], pixdim=(1.0, 1.0, 1.0), mode=("bilinear", "nearest")),
-        SpatialPadd(keys=["image", "label"], spatial_size=(240, 240, 160)),  # Pad depth to 160
-        ScaleIntensityRanged(keys=["image"], a_min=0, a_max=2000, b_min=0.0, b_max=1.0, clip=True),
+        Spacingd(keys=["image", "label"], pixdim=(1.5, 1.5, 1.5), mode=("bilinear", "nearest")),
+        Resize(keys=["image", "label"], spatial_size=(128, 128, 128)),  # Resize to smaller spatial size
+        ScaleIntensityRanged(
+            keys=["image"],
+            a_min=-200,
+            a_max=200,
+            b_min=0.0,
+            b_max=1.0,
+            clip=True,
+        ),
         MapLabelValued(keys=["label"], orig_labels=[0, 1, 2, 3, 4], target_labels=[0, 1, 2, 3, 3]),
-        ToTensord(keys=["image", "label"])
+        ToTensord(keys=["image", "label"]),
     ])
     
 
     dataset = Dataset(data=data_dicts, transform=transforms)
     loader = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers)
+    
+    print("Inspecting data shapes...")
+    for i, batch in enumerate(loader):
+        images, labels = batch["image"], batch["label"]
+        print(f"Batch {i + 1}: Image shape: {images.shape}, Label shape: {labels.shape}")
+        if i == 4:  # Limit to first 5 batches
+            break
+            
+    
+
     return loader
 
