@@ -38,18 +38,23 @@ if __name__ == '__main__':
     train_loader = dp.get_monai_dataloader(
         yaml_path="train.yaml",
         prefix=DATA_SET_PATH_PREFIX,
-        batch_size=2,
+        batch_size=4,
         shuffle=True,
-        num_workers=4
+        num_workers=2
     )
 
     val_loader = dp.get_monai_dataloader(
         yaml_path="val.yaml",
         prefix=DATA_SET_PATH_PREFIX,
-        batch_size=2,
+        batch_size=4,
         shuffle=False,
-        num_workers=4
+        num_workers=2
     )
+
+    for batch in train_loader:
+        print(batch["image"].shape)  # [batch_size, channels, depth, height, width]
+        print(batch["label"].shape)
+        break
 
     # Step 2: Train the model
     print("Starting training...")

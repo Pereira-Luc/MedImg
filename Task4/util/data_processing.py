@@ -2,14 +2,15 @@ import os
 import yaml
 import monai
 
-
 from monai.transforms import (
     LoadImaged,
     EnsureChannelFirstd,
     Orientationd,
     Spacingd,
     ScaleIntensityRanged,
-    ToTensord
+    SpatialPadd,  # <-- Use the dictionary-based transform
+    ToTensord,
+    CenterSpatialCropd
 )
 from monai.data import Dataset, DataLoader
 
@@ -38,13 +39,13 @@ def get_monai_dataloader(
     """
 
     # Remove .yaml from the yaml_path
-    type = yaml_path.replace('.yaml', '')
+    dataset_type = yaml_path.replace('.yaml', '')
 
     # -----------------------
     # 1. Load patient folders from YAML
     # -----------------------
     with open(yaml_path, 'r') as f:
-        patient_folders = yaml.safe_load(f)[type]
+        patient_folders = yaml.safe_load(f)[dataset_type]
 
     # -----------------------
     # 2. Construct data dictionaries
@@ -65,7 +66,7 @@ def get_monai_dataloader(
 
     # -----------------------
     # 3. Define basic transforms
-    #    (Adjust as needed for the pipeline)
+    #    (Includes EnsureDivisibled to avoid off-by-one dimension mismatch)
     # -----------------------
     base_transforms = monai.transforms.Compose([
         LoadImaged(keys=["image", "label"]),
@@ -79,6 +80,15 @@ def get_monai_dataloader(
             b_min=0.0,
             b_max=1.0,
             clip=True
+        ),
+        SpatialPadd(
+            keys=["image", "label"],
+            spatial_size=[256, 256, 256],  # Larger size that's divisible by 16
+            mode="constant"
+        ),
+        CenterSpatialCropd(
+            keys=["image", "label"],
+            roi_size=[240, 240, 240]  # Size divisible by 16
         ),
         ToTensord(keys=["image", "label"])
     ])
@@ -95,5 +105,4 @@ def get_monai_dataloader(
     )
 
     return loader
-
 
